@@ -3,19 +3,15 @@ import os
 import sys
 import json
 from game_state import GameState
+
 pygame.init()
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+screen = pygame.display.set_mode((GameState.SCREEN_WIDTH, GameState.SCREEN_HEIGHT))
 screen_rect=screen.get_rect()
 tile_size = 38  # Tamanho de cada bloco no mapa
 #compare https://www.atari2600.com.br/Sites/Atari/AtariFull.aspx
-GameState.speed = 0.3
 speed_default = 1.3
 scroll_offset = -160
-
-PANEL_HEIGHT = 80
-GAME_HEIGHT = SCREEN_HEIGHT - PANEL_HEIGHT
+GAME_HEIGHT = GameState.game_height()
 game_over_ticks_max = 20
 game_over_ticks = 0
 scale=2
@@ -35,7 +31,7 @@ def restart_program():
 
 
 def reset_game():
-    global player, game_objects, game_over, game_over_ticks, score_value
+    global player, game_objects, game_over, game_over_ticks
     
     pygame.time.delay(2000)  # Aguarda 2 segundos (2000 milissegundos)
     player = Player(initial_player_x, initial_player_y, sheet_image)
@@ -43,7 +39,7 @@ def reset_game():
     game_objects.clear()  # Adicione esta linha para remover todos os objetos antigos
     game_objects = load_game_state()  # Atualize a lista de objetos de jogo com a lista retornada por load_game_state()
     game_objects.append(player)  # Adicione o player à lista
-    score_value = 0
+    GameState.reset()
     gauge_meter.update(player.gasolina)     
     game_over = False
     game_over_ticks = 0
@@ -125,12 +121,12 @@ gas_decrement_interval = 1000  # Diminui o combustível a cada segundo
 game_over = False
 game_objects = load_game_state()
 game_objects.append(player)  # Adiciona o player de volta à lista
-score_value = 0
+GameState.reset()
 # Cria o objeto Gauge primeiro na posição x=0
 gauge = Gauge(0, GAME_HEIGHT + 45, sheet_image)
 
 # Agora podemos calcular a posição x corretamente
-gauge_x = (SCREEN_WIDTH - gauge.image.get_width()) // 2
+gauge_x = (GameState.SCREEN_WIDTH - gauge.image.get_width()) // 2
 
 # Ajusta a posição x do objeto Gauge
 gauge.x = gauge_x
@@ -141,13 +137,13 @@ gauge_meter_x = gauge_x  # supondo que o GaugeMeter comece na mesma posição x 
 gauge_meter = GaugeMeter(gauge_meter_x, GAME_HEIGHT + 45, gauge, sheet_image)
 
 # Cria o objeto Score temporário
-temp_score = Score(0, GAME_HEIGHT + 10, score_value, sheet_image, gauge_x+gauge.image.get_width(), scale)
+temp_score = Score(0, GAME_HEIGHT + 10, GameState.player_score, sheet_image, gauge_x+gauge.image.get_width(), scale)
 
 # Define a posição x do Score de forma que esteja alinhado à direita do Gauge
 score_x = gauge_x + gauge.image.get_width()
 
 # Cria o objeto Score
-score = Score(score_x, GAME_HEIGHT + 10, score_value, sheet_image, gauge_x+gauge.image.get_width(), scale)
+score = Score(score_x, GAME_HEIGHT + 10, GameState.player_score, sheet_image, gauge_x+gauge.image.get_width(), scale)
 
 # Atualiza o GaugeMeter
 gauge_meter.update(player.gasolina) 
@@ -186,7 +182,7 @@ while True:
             game_objects.append(bullet)
             
     # Limpa a tela antes de desenhar
-    screen.fill((45, 50, 184))
+    screen.fill(GameState.WATER_COLOR)
     for game_object in game_objects:
 
         if isinstance(game_object, Bullet):
@@ -198,7 +194,7 @@ while True:
                 if collided_object is not None:   # Se a bala colidir com um objeto
                     if isinstance(collided_object, MovingObject) or isinstance(collided_object, Ponte) or isinstance(collided_object, Fuel):  # Se esse objeto for um inimigo ou uma ponte
                         collided_object.explode()  # Exploda o objeto
-                        score_value += 100  # incrementa a pontuação
+                        GameState.add_score(100)
                     
                         game_objects.remove(game_object)  # Remova a bala da lista de objetos do jogo
                     else:  # Se a bala atingir um objeto que não seja um inimigo ou uma ponte
@@ -222,7 +218,7 @@ while True:
 
             game_object.move()    
             if game_object.is_dead:
-                score_value += 100  # incrementa a pontuação
+                GameState.add_score(100)
                 game_objects.remove(game_object)
 
 
@@ -254,9 +250,9 @@ while True:
     # Desenha o objeto Player por último para que ele fique na frente dos outros objetos
     #player.draw(screen)
     # Atualize e desenhe o placar
-    pygame.draw.rect(screen, (128, 128, 128), pygame.Rect(0, GAME_HEIGHT, SCREEN_WIDTH, PANEL_HEIGHT))
+    pygame.draw.rect(screen, (128, 128, 128), pygame.Rect(0, GAME_HEIGHT, GameState.SCREEN_WIDTH, GameState.PANEL_HEIGHT))
 
-    score.update(score_value)
+    score.update(GameState.player_score)
     score.draw(screen)
     gauge.draw(screen)
      # Atualiza o contador de tempo
